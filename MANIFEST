@@ -1,4 +1,7 @@
 .gitignore
+benchmark/mx-types.pl
+benchmark/simple.pl
+benchmark/type.pl
 Changes
 inc/Module/Install.pm
 inc/Module/Install/AuthorTests.pm
@@ -9,15 +12,10 @@ inc/Module/Install/Include.pm
 inc/Module/Install/Makefile.pm
 inc/Module/Install/Metadata.pm
 inc/Module/Install/Repository.pm
-inc/Module/Install/TestBase.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
-inc/Spiffy.pm
-inc/Test/Base.pm
-inc/Test/Base/Filter.pm
-inc/Test/Builder.pm
-inc/Test/Builder/Module.pm
 inc/Test/More.pm
+inc/Test/Requires.pm
 lib/Smart/Args.pm
 Makefile.PL
 MANIFEST			This list of files
@@ -31,6 +29,10 @@ t/010_simple/04_default.t
 t/010_simple/05_methods.t
 t/010_simple/06_optional_tc.t
 t/010_simple/07_create_tc.t
+t/020_custom/01_tc.t
+t/020_custom/02_coercion.t
+t/020_custom/03_moose_tc.t
+t/020_custom/04_moose_coercion.t
 xt/01_podspell.t
 xt/02_perlcritic.t
 xt/03_pod.t

@@ -19,11 +19,10 @@ no_index:
     - t
     - xt
 requires:
-  Filter::Util::Call: 0
-  Mouse: 0.62
+  Mouse: 0.82
   PadWalker: 1.9
   Scalar::Util: 1.21
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/tokuhirom/p5-Smart-Args.git
-version: 0.03
+version: 0.04

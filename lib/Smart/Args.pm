@@ -1,11 +1,11 @@
 package Smart::Args;
 use strict;
 use warnings;
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 use Exporter 'import';
 use PadWalker qw/var_name/;
 
-use Mouse::Util::TypeConstraints;
+use Mouse::Util::TypeConstraints ();
 
 *_get_type_constraint = \&Mouse::Util::TypeConstraints::find_or_create_isa_type_constraint;
 
@@ -17,15 +17,21 @@ sub args {
     {
         package DB;
         # call of caller in DB package sets @DB::args,
-        # which requires list context, but does not use return values
-        () = caller(1);
+        # which requires list context, but we don't need return values
+        () = CORE::caller(1);
     }
 
-    # method call
-    if(exists $is_invocant{ var_name(1, \$_[0]) || '' }){
-        $_[0] = shift @DB::args;
-        shift;
-        # XXX: should we provide ways to check the type of invocant?
+    if(@_) {
+        my $name = var_name(1, \$_[0]) || '';
+        if(exists $is_invocant{ $name }){ # seems method call
+            $_[0] = shift @DB::args; # set the invocant
+            if(defined $_[1]) { # has rule?
+                $name =~ s/^\$//;
+                $_[0] = _validate_by_rule({ $name => $_[0] }, $name, $_[1]);
+                shift;
+            }
+            shift;
+        }
     }
 
     my $args = ( @DB::args == 1 && ref($DB::args[0]) )
@@ -35,7 +41,7 @@ sub args {
     ### $args
     ### @_
 
-    # args my $var => TYPE
+    # args my $var => RULE
     #         ~~~~    ~~~~
     #         undef   defined
 
@@ -44,61 +50,75 @@ sub args {
         (my $name = var_name(1, \$_[$i]))
             or  Carp::croak('usage: args my $var => TYPE, ...');
 
-        ### $i
-        ### $name
-
         $name =~ s/^\$//;
 
-        my $rule = _compile_rule($_[$i+1]);
-
-        if(exists $args->{$name}){
-            if(my $tc = $rule->{type} ){
-                if(!$tc->check($args->{$name})){
-                    Carp::croak($tc->get_message($args->{$name}));
-                }
-            }
-
-            $_[$i] = $args->{$name};
+        # with rule  (my $foo => $rule, ...)
+        if(defined $_[ $i + 1 ]) {
+            $_[$i] = _validate_by_rule($args, $name, $_[$i + 1]);
+            $i++;
         }
-        else{
-            if(exists $rule->{default}){
-                $_[$i] = $rule->{default};
-            }
-            elsif(!exists $rule->{optional}){
+        # without rule (my $foo, my $bar, ...)
+        else {
+            if(!exists $args->{$name}) { # parameters are mandatory by default
                 Carp::croak("missing mandatory parameter named '\$$name'");
             }
-            else{
-                # noop
-            }
+            $_[$i] = $args->{$name};
         }
-        $i++ if defined $_[$i+1]; # discard type info
     }
 }
 
-sub _compile_rule {
-    my ($rule) = @_;
-    if (!defined $rule) {
-        return +{ };
-    }
-    elsif (!ref $rule) { # single, non-ref parameter is a type name
-        my $tc = _get_type_constraint($rule) or Carp::croak("cannot find type constraint '$rule'");
-        return +{ type => $tc };
+# rule: $type or +{ isa => $type, optional => $bool, default => $default }
+sub _validate_by_rule {
+    my($args, $name, $basic_rule) = @_;
+
+    # compile the rule
+    my $rule;
+    my $type;
+    my $mandatory = 1; # all the arguments are mandatory by default
+    if(ref($basic_rule) eq 'HASH') {
+        $rule = $basic_rule;
+        if (defined $basic_rule->{isa}) {
+            $type = _get_type_constraint($basic_rule->{isa});
+        }
+        $mandatory = !$rule->{optional};
     }
     else {
-        my %ret;
-        if ($rule->{isa}) {
-            my $tc = _get_type_constraint($rule->{isa}) or Carp::croak("cannot find type constraint '$rule'");
-            $ret{type} = $tc;
-        }
-        for my $key (qw/optional default/) {
-            if (exists $rule->{$key}) {
-                $ret{$key} = $rule->{$key};
+        # $rule is a type constraint name or type constraint object
+        $type = _get_type_constraint($basic_rule);
+    }
+
+    my $value = $args->{$name};
+
+    # validate the value by the rule
+    if(exists $args->{$name}){
+        if(defined $type ){
+            if(!$type->check($value)){
+                $value = _try_coercion_or_die($type, $value);
             }
         }
-        return \%ret;
     }
+    else {
+        if(defined($rule) and exists $rule->{default}){
+            $value = $rule->{default};
+        }
+        elsif($mandatory){
+            Carp::croak("missing mandatory parameter named '\$$name'");
+        }
+        else{
+            # no default, and not mandatory; noop
+        }
+    }
+    return $value;
 }
 
+sub _try_coercion_or_die {
+    my($tc, $value) = @_;
+    if($tc->has_coercion) {
+        $value = $tc->coerce($value);
+        $tc->check($value) and return $value;
+    }
+    Carp::croak($tc->get_message($value));
+}
 1;
 __END__
 
@@ -132,7 +152,7 @@ Smart::Args - argument validation for you
          my $p => 'Int';
   }
   sub class_method {
-    args my $class,
+    args my $class => 'ClassName',
          my $p => 'Int';
   }
 
@@ -144,11 +164,36 @@ Smart::Args - argument validation for you
 =head1 DESCRIPTION
 
 Smart::Args is yet another argument validation library.
+
 This module makes your module more readable, and writable =)
 
-=head1 TODO
+=head1 FUNCTIONS
 
-coercion support?
+=head2 C<args my $var [, $rule], ...>
+
+Checks parameters and fills them into lexical variables.
+
+The arguments consist of a lexical <$var> and an optional I<$rule>.
+
+I<$rule> can be a type name (e.g. C<Int>), a HASH reference (with
+C<type>, C<default>, and C<optional>), or a type constraint object.
+
+Note that if the first variable is named I<$class> or I<$self>, it
+is dealt as a method call.
+
+See the SYNOPSIS section for examples.
+
+=head1 TYPES
+
+The types that C<Smart::Args> uses are type constraints of C<Mouse>.
+That is, you can define your types in the way Mouse does.
+
+In addition, C<Smart::Args> also allows Moose type constraint objects,
+so you can use any C<MooseX::Types::*> libraries on CPAN.
+
+Type coercions are automatically tried if validations fail.
+
+See L<Mouse::Util::TypeConstraints> for details.
 
 =head1 AUTHOR
 
