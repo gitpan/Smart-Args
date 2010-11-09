@@ -22,6 +22,7 @@ MANIFEST			This list of files
 META.yml
 README
 t/00_compile.t
+t/010_simple/009_carplevel.t
 t/010_simple/01_basic.t
 t/010_simple/02_type.t
 t/010_simple/03_optional.t
@@ -34,6 +35,8 @@ t/020_custom/01_tc.t
 t/020_custom/02_coercion.t
 t/020_custom/03_moose_tc.t
 t/020_custom/04_moose_coercion.t
+t/lib/Foo.pm
+t/Util.pm
 xt/01_podspell.t
 xt/02_perlcritic.t
 xt/03_pod.t
