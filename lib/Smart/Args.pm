@@ -1,7 +1,7 @@
 package Smart::Args;
 use strict;
 use warnings;
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 use Exporter 'import';
 use PadWalker qw/var_name/;
 
@@ -45,16 +45,16 @@ sub args {
     #         ~~~~    ~~~~
     #         undef   defined
 
+    my $used = 0;
     for(my $i = 0; $i < @_; $i++){
 
         (my $name = var_name(1, \$_[$i]))
             or  Carp::croak('usage: args my $var => TYPE, ...');
-
         $name =~ s/^\$//;
 
         # with rule  (my $foo => $rule, ...)
         if(defined $_[ $i + 1 ]) {
-            $_[$i] = _validate_by_rule($args, $name, $_[$i + 1]);
+            $_[$i] = _validate_by_rule($args, $name, $_[$i + 1], \$used);
             $i++;
         }
         # without rule (my $foo, my $bar, ...)
@@ -63,13 +63,28 @@ sub args {
                 Carp::croak("missing mandatory parameter named '\$$name'");
             }
             $_[$i] = $args->{$name};
+            $used++;
         }
     }
+
+    if( $used < keys %{$args} && warnings::enabled('void') )  {
+        # hack to get unused argument names
+        my %vars;
+        foreach my $slot(@_) {
+            my $name = var_name(1, \$slot) or next;
+            $name =~ s/^\$//;
+            $vars{$name} = undef;
+        }
+        warnings::warn( void =>
+            'unknown arguments: '
+            . join ', ', sort grep{ not exists $vars{$_} } keys %{$args} );
+    }
+    return;
 }
 
 # rule: $type or +{ isa => $type, optional => $bool, default => $default }
 sub _validate_by_rule {
-    my($args, $name, $basic_rule) = @_;
+    my($args, $name, $basic_rule, $used_ref) = @_;
 
     # compile the rule
     my $rule;
@@ -96,6 +111,7 @@ sub _validate_by_rule {
                 $value = _try_coercion_or_die($type, $value);
             }
         }
+        ${$used_ref}++ if defined $used_ref;
     }
     else {
         if(defined($rule) and exists $rule->{default}){
@@ -141,7 +157,7 @@ Smart::Args - argument validation for you
     args my $p => {isa => 'Int', default => 3},
   }
   func3(p => 4); # p => 4
-  func3();       # p => 4
+  func3();       # p => 3
 
   package F;
   use Moose;
@@ -171,9 +187,13 @@ This module makes your module more readable, and writable =)
 
 =head2 C<args my $var [, $rule], ...>
 
-Checks parameters and fills them into lexical variables.
+Checks parameters and fills them into lexical variables. All the parameters
+are mandatory by default, and unknown parameters (i.e. possibly typos) are
+reported as C<void> warnings.
 
-The arguments consist of a lexical <$var> and an optional I<$rule>.
+The arguments of C<args()> consist of lexical <$var>s and optional I<$rule>s.
+
+I<$vars> must be a declaration of a lexical variable.
 
 I<$rule> can be a type name (e.g. C<Int>), a HASH reference (with
 C<type>, C<default>, and C<optional>), or a type constraint object.

@@ -25,4 +25,4 @@ requires:
 resources:
   license: http://dev.perl.org/licenses/
   repository: git://github.com/tokuhirom/p5-Smart-Args.git
-version: 0.04
+version: 0.05
