@@ -35,6 +35,7 @@ t/020_custom/01_tc.t
 t/020_custom/02_coercion.t
 t/020_custom/03_moose_tc.t
 t/020_custom/04_moose_coercion.t
+t/030_pos/01_simple.t
 t/lib/Foo.pm
 t/Util.pm
 xt/01_podspell.t
