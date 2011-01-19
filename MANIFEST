@@ -31,6 +31,7 @@ t/010_simple/05_methods.t
 t/010_simple/06_optional_tc.t
 t/010_simple/07_create_tc.t
 t/010_simple/08_unknown_args.t
+t/010_simple/09_nested.t
 t/020_custom/01_tc.t
 t/020_custom/02_coercion.t
 t/020_custom/03_moose_tc.t
