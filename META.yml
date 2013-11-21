@@ -34,7 +34,7 @@ no_index:
 provides:
   Smart::Args:
     file: lib/Smart/Args.pm
-    version: 0.11
+    version: 0.12
 requires:
   Exporter: 5.63
   Mouse: 0.92
@@ -46,7 +46,7 @@ resources:
   bugtracker: https://github.com/tokuhirom/Smart-Args/issues
   homepage: https://github.com/tokuhirom/Smart-Args
   repository: git://github.com/tokuhirom/Smart-Args.git
-version: 0.11
+version: 0.12
 x_contributors:
   - 'Fuji, Goro <gfuji@cpan.org>'
   - 'Neil Bowers <neil@bowers.com>'

@@ -68,7 +68,7 @@
    "provides" : {
       "Smart::Args" : {
          "file" : "lib/Smart/Args.pm",
-         "version" : "0.11"
+         "version" : "0.12"
       }
    },
    "release_status" : "stable",
@@ -82,7 +82,7 @@
          "web" : "https://github.com/tokuhirom/Smart-Args"
       }
    },
-   "version" : "0.11",
+   "version" : "0.12",
    "x_contributors" : [
       "Fuji, Goro <gfuji@cpan.org>",
       "Neil Bowers <neil@bowers.com>"
